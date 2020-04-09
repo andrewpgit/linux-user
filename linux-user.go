@@ -22,7 +22,9 @@ type Users struct {
 
 type User struct {
 	Name string `json:"name"`
-	Pass string `json:"passwd"`
+	Directory string `json:"directory"`
+	Group string `json:group`
+	Shell string `json:shell`
 }
 
 // Read json file and return slice of byte.
@@ -40,7 +42,7 @@ func ReadUsers(f string) []byte {
 }
 
 // Read file /etc/passwd and return slice of users
-func ReadPasswd(f string) (list []string) {
+func ReadEtcPasswd(f string) (list []string) {
 
 	file, err := os.Open(f)
 	if err != nil {
@@ -81,26 +83,32 @@ func CreateRandom(n int) string {
 }
 
 // User is created by executing shell command useradd
-func AddNewUser(u string, p string) bool {
+func AddNewUser(u *User) (bool, string) {
 
-	argUser := []string{"-d", "/tmp/henkel/home", "-s", "/sbin/nologin", u}
-	argPass := []string{"-c", fmt.Sprintf("echo %s:%s | chpasswd", u, p)}
-	fmt.Println("User add:", u, "=>", p)
+
+	encrypt := base64.StdEncoding.EncodeToString([]byte(CreateRandom(9)))
+
+	argUser := []string{"-m", "-d", u.Directory, "-G", u.Group, "-s", u.Shell, u.Name}
+	argPass := []string{"-c", fmt.Sprintf("echo %s:%s | chpasswd", u.Name, encrypt)}
+
 	userCmd := exec.Command("useradd", argUser...)
 	passCmd := exec.Command("/bin/sh", argPass...)
-	if output, err := userCmd.Output(); err != nil {
-		fmt.Println(err, "There was an error user add")
-		return false
-	} else {
-		fmt.Println(string(output))
 
-		if _, err := passCmd.Output(); err != nil {
-			fmt.Println(err)
-			return false
-		}
-		return true
+	if out, err := userCmd.Output(); err != nil {
+		fmt.Println(err, "There was an error by adding user", u.Name)
+		return false, ""
+	} else {
+
+				fmt.Printf("Output: %s\n", out)
+
+				if _, err := passCmd.Output(); err != nil {
+					fmt.Println(err)
+					return false, ""
+				}
+		return true, encrypt
 	}
 }
+
 
 func main() {
 
@@ -110,20 +118,20 @@ func main() {
 	}
 	NameOfFile := os.Args[1]
 
-	d := ReadUsers(NameOfFile)
+	data := ReadUsers(NameOfFile)
 
 	var u Users
-	json.Unmarshal(d, &u)
+	json.Unmarshal(data, &u)
 
-	userList := ReadPasswd(userFile)
+	userList := ReadEtcPasswd(userFile)
 
 	for i := range u.Users {
 
 		c := check(userList, u.Users[i].Name)
 		if c == false {
-			encrypt := base64.StdEncoding.EncodeToString([]byte(u.Users[i].Pass + CreateRandom(5)))
-			if info := AddNewUser(u.Users[i].Name, encrypt); info == true {
-				fmt.Println("User was added:", u.Users[i].Name)
+
+			if info, passwd := AddNewUser(&u.Users[i]); info == true {
+				fmt.Println("User was added:>",u.Users[i].Name, "=>", "Password:>", passwd)
 			}
 		} else {
 			fmt.Println("The user already exists:>", u.Users[i].Name)

@@ -2,15 +2,21 @@
   "users": [
     {
       "name": "Mike",
-      "passwd": "password11"
+      "directory": "/tmp/all",
+      "group":  "ttpp",
+      "shell": "/bin/bash"
     },
     {
       "name": "Yurii",
-      "passwd": "password22"
+      "directory": "/tmp/tttt",
+      "group": "ttpp",
+      "shell": "/bin/bash"
     },
     {
       "name": "test1",
-      "passwd": "password33"
+      "directory": "/tmp/ttpp",
+      "group": "ttpp",
+      "shell": "/bin/bash"
     }
   ]
 }
